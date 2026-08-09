@@ -5,6 +5,9 @@ A completely serverless, browser-based murder mystery game powered by Large Lang
 As the detective, your job is to interrogate the suspects, inspect the evidence, consult with the Police Chief, and catch the killer in a lie.
 
 ![Demo](images/demo.png)
+
+https://amaravindmenon.github.io/Dynamic-Murder-Mystry/
+Select online add the Api-Key, endpoint and model and play directly
 ---
 
 ## ✨ Features
