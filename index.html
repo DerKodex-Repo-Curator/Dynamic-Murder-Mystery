@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Dynamic Murder Mystery</title>
+  <style>
+    :root {
+      --bg-color: #0f0f11;
+      --panel-bg: #1a1a1c;
+      --border-color: #2a2a2d;
+      --text-main: #d1d1d1;
+      --text-muted: #888888;
+      --accent-color: #ba2d2d;
+      --accent-hover: #e03535;
+      --user-msg: #1e3a5f;
+      --suspect-msg: #242426;
+      --chief-color: #d4af37; 
+      --font-mono: 'Courier New', Courier, monospace;
+      --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-sans); background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+    
+    /* --- Sidebar / Case File --- */
+    aside { width: 350px; background-color: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 25px; overflow-y: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5); z-index: 10; }
+    aside h1 { font-family: var(--font-mono); font-size: 1.6rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; position: relative; }
+    aside h1::after { content: "CONFIDENTIAL"; position: absolute; top: -8px; right: 0; color: rgba(186, 45, 45, 0.3); border: 2px solid rgba(186, 45, 45, 0.3); padding: 2px 5px; font-size: 0.65rem; transform: rotate(15deg); font-weight: bold; }
+
+    .case-details { margin-bottom: 20px; font-family: var(--font-mono); }
+    .case-details p { margin-bottom: 10px; font-size: 0.85rem; line-height: 1.4; color: var(--text-main); }
+    .case-details span.label { color: var(--accent-color); font-size: 0.7rem; text-transform: uppercase; display: block; margin-bottom: 2px; font-weight: bold;}
+    
+    /* --- Interactive Evidence Locker --- */
+    .evidence-section-title { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px;}
+    .evidence-locker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px; }
+    
+    .evidence-box { 
+      background-color: #121214; 
+      border: 1px dashed var(--text-muted); 
+      border-radius: 6px; 
+      padding: 12px 10px; 
+      text-align: center; 
+      cursor: pointer; 
+      transition: all 0.2s ease;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .evidence-box:hover { border-color: var(--accent-color); background-color: rgba(186, 45, 45, 0.05); transform: translateY(-2px); }
+    .evidence-badge { background-color: var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; letter-spacing: 1px;}
+    .evidence-box:hover .evidence-badge { background-color: var(--accent-color); color: #fff; }
+    .evidence-name { font-size: 0.75rem; color: var(--text-main); font-weight: bold; line-height: 1.2; font-family: var(--font-mono);}
+
+    /* --- Expanding Dossier Cards --- */
+    .suspect-list { display: flex; flex-direction: column; gap: 10px; flex-grow: 1; }
+    .suspect-card { background-color: #202023; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; text-align: left; transition: all 0.3s ease; overflow: hidden; }
+    .suspect-card:hover { background-color: #2a2a2d; border-color: var(--text-muted); }
+    .suspect-card.active { border-color: var(--accent-color); background-color: rgba(186, 45, 45, 0.05); }
+
+    .card-header { padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
+    .card-details { max-height: 0; opacity: 0; padding: 0 15px; transition: all 0.3s ease; font-size: 0.75rem; color: var(--text-muted); background-color: rgba(0,0,0,0.2); border-top: 1px solid transparent; }
+    .suspect-card.active .card-details { max-height: 200px; opacity: 1; padding: 15px; border-top-color: var(--accent-color); }
+    .card-details p { margin-bottom: 8px; line-height: 1.4; }
+    .card-details strong { color: var(--text-main); font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; display: block; margin-bottom: 2px;}
+
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #121214; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: bold; font-size: 1rem; color: var(--text-muted); border: 2px solid var(--border-color); flex-shrink: 0; transition: all 0.3s; }
+    .suspect-card.active .avatar { border-color: var(--accent-color); color: var(--accent-color); }
+    .suspect-info { overflow: hidden; }
+    .suspect-info strong { display: block; font-size: 0.9rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+    .suspect-info small { color: var(--text-muted); font-size: 0.7rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+    .chief-card { border-color: var(--chief-color); background-color: rgba(212, 175, 55, 0.05); margin-bottom: 10px; }
+    .chief-card:hover { border-color: var(--chief-color); background-color: rgba(212, 175, 55, 0.1); }
+    .chief-card.active { border-color: var(--chief-color); background-color: rgba(212, 175, 55, 0.15); border-left: 4px solid var(--chief-color); }
+    .chief-card .avatar { color: var(--chief-color); border-color: var(--chief-color); font-size: 1.2rem; }
+    .chief-card .suspect-info strong { color: var(--chief-color); }
+    
+    /* --- Accuse Button --- */
+    .accuse-btn { width: 100%; padding: 15px; margin-top: 15px; background-color: transparent; border: 2px solid var(--accent-color); color: var(--accent-color); font-weight: bold; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: all 0.3s ease; border-radius: 6px; }
+    .accuse-btn:hover:not(:disabled) { background-color: var(--accent-color); color: #fff; box-shadow: 0 0 15px rgba(186, 45, 45, 0.5); }
+    .accuse-btn:disabled { border-color: var(--border-color); color: var(--border-color); cursor: not-allowed; }
+
+    /* --- Interrogation Room --- */
+    main { flex: 1; display: flex; flex-direction: column; background-color: var(--bg-color); }
+    header { background-color: var(--panel-bg); padding: 20px 30px; border-bottom: 1px solid var(--border-color); }
+    header h2 { font-size: 1rem; font-weight: normal; font-family: var(--font-mono); color: var(--text-muted); }
+    #current-suspect { color: var(--accent-color); font-weight: bold; font-size: 1.1rem; }
+
+    .chat-history { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+    .msg { max-width: 70%; padding: 14px 18px; border-radius: 10px; line-height: 1.6; font-size: 0.95rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .msg.system { align-self: center; background-color: transparent; color: var(--text-muted); font-family: var(--font-mono); text-align: center; font-size: 0.85rem; border: 1px dashed var(--border-color); }
+    .msg.user { align-self: flex-end; background-color: var(--user-msg); border-bottom-right-radius: 2px; }
+    .msg.suspect { align-self: flex-start; background-color: var(--suspect-msg); border: 1px solid var(--border-color); border-bottom-left-radius: 2px; }
+    .msg.chief-reply { border-color: var(--chief-color); background-color: rgba(212, 175, 55, 0.05); color: var(--text-main); }
+    
+    /* --- Inputs and Settings --- */
+    .chat-input-area { padding: 20px 30px; background-color: var(--panel-bg); border-top: 1px solid var(--border-color); display: flex; gap: 15px; }
+    #chat-input { flex: 1; padding: 14px 18px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; }
+    #chat-input:focus { border-color: var(--text-muted); }
+    #send-btn { padding: 0 30px; background-color: var(--accent-color); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    #send-btn:hover { background-color: var(--accent-hover); }
+
+    .settings-box { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); }
+    .settings-box h3 { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; font-family: var(--font-mono); }
+    .setting-group { margin-bottom: 8px; }
+    .setting-group label { display: block; font-size: 0.65rem; color: var(--text-muted); margin-bottom: 3px; text-transform: uppercase; }
+    .setting-group input, .setting-group select { width: 100%; padding: 6px 8px; background-color: #121214; border: 1px solid var(--border-color); color: var(--text-main); font-family: var(--font-mono); font-size: 0.75rem; border-radius: 4px; }
+    .btn-restart { width: 100%; padding: 8px; margin-top: 8px; background-color: transparent; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; border-radius: 4px; transition: all 0.2s; }
+    .btn-restart:hover { background-color: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+
+    /* --- Modal Styles --- */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 100; }
+    .modal-content { background-color: var(--panel-bg); border: 1px solid var(--border-color); padding: 40px; border-radius: 8px; width: 500px; max-width: 90%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+    .modal-content h2 { color: var(--accent-color); font-family: var(--font-mono); margin-bottom: 15px; text-transform: uppercase; font-size: 1.8rem; }
+    .modal-content p { margin-bottom: 25px; line-height: 1.5; color: var(--text-main); }
+    .modal-suspect-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+    .modal-btn { padding: 15px; background-color: #202023; border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font-family: inherit; transition: all 0.2s; border-radius: 6px; font-size: 1rem; }
+    .modal-btn:hover { background-color: var(--accent-color); border-color: var(--accent-color); }
+    .cancel-btn { background-color: transparent; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; margin-top: 15px; font-family: var(--font-mono); }
+    .cancel-btn:hover { color: var(--text-main); }
+    .result-text { font-size: 1.4rem; font-weight: bold; margin: 20px 0; font-family: var(--font-mono); }
+    .result-win { color: #2ecc71; }
+    .result-loss { color: var(--accent-color); }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <h1>Case File</h1>
+    <div class="case-details">
+      <p><span class="label">Victim</span> <span id="ui-victim">Generating...</span></p>
+    </div>
+    
+    <!-- THE NEW EVIDENCE LOCKER -->
+    <div class="evidence-section-title">Evidence Locker</div>
+    <div class="evidence-locker" id="ui-evidence">
+      <div class="evidence-box"><div class="evidence-badge">SITE</div><div class="evidence-name">Loading...</div></div>
+      <div class="evidence-box"><div class="evidence-badge">WPN</div><div class="evidence-name">Loading...</div></div>
+    </div>
+    
+    <div class="suspect-list" id="ui-suspects">
+      <div class="suspect-card"><div class="card-header"><div class="avatar">...</div><div class="suspect-info"><strong>Building Case</strong><small>Please wait</small></div></div></div>
+    </div>
+
+    <button id="accuse-btn" class="accuse-btn" disabled>Make Accusation</button>
+
+    <div class="settings-box">
+      <h3>API Configuration</h3>
+      <div class="setting-group"><label>Provider</label><select id="api-provider"><option value="local">Local (Ollama)</option><option value="online">Online (OpenRouter / Groq)</option></select></div>
+      <div class="setting-group" id="key-container" style="display: none;"><label>API Key</label><input type="password" id="api-key" placeholder="sk-or-v1-..." /></div>
+      <div class="setting-group"><label>Model</label><input type="text" id="api-model" value="llama3.1" /></div>
+      <div class="setting-group"><label>Endpoint</label><input type="text" id="api-endpoint" value="http://localhost:11434" /></div>
+      <button class="btn-restart" id="new-game-btn">New Game</button>
+    </div>
+  </aside>
+
+  <main>
+    <header><h2>Interrogating: <span id="current-suspect">Nobody Selected</span></h2></header>
+    <div class="chat-history" id="chat-history"><div class="msg system">Contacting AI to build a new case file...</div></div>
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Select a card to begin..." disabled autocomplete="off">
+      <button id="send-btn" disabled>Ask</button>
+    </div>
+  </main>
+
+  <div id="modal-overlay" class="modal-overlay" style="display: none;">
+    <div id="modal-content" class="modal-content"></div>
+  </div>
+
+  <script>
+    const uiVictim = document.getElementById('ui-victim');
+    const uiEvidence = document.getElementById('ui-evidence');
+    const uiSuspects = document.getElementById('ui-suspects'), currentSuspectHeader = document.getElementById('current-suspect'), chatHistoryDiv = document.getElementById('chat-history');
+    const chatInput = document.getElementById('chat-input'), sendBtn = document.getElementById('send-btn'), newGameBtn = document.getElementById('new-game-btn');
+    const accuseBtn = document.getElementById('accuse-btn');
+    const modalOverlay = document.getElementById('modal-overlay'), modalContent = document.getElementById('modal-content');
+    
+    const apiProvider = document.getElementById('api-provider'), apiKeyInput = document.getElementById('api-key'), keyContainer = document.getElementById('key-container');
+    const apiModelInput = document.getElementById('api-model'), apiEndpointInput = document.getElementById('api-endpoint');
+
+    let gameState = null;
+    let currentSuspectIndex = null; 
+    let chatHistories = []; 
+    let chiefChatHistory = []; 
+
+    function saveSettings() { localStorage.setItem('apiProvider', apiProvider.value); localStorage.setItem('apiKey', apiKeyInput.value); localStorage.setItem('apiModel', apiModelInput.value); localStorage.setItem('apiEndpoint', apiEndpointInput.value); }
+    function loadSettings() { 
+      if (localStorage.getItem('apiProvider')) apiProvider.value = localStorage.getItem('apiProvider');
+      if (localStorage.getItem('apiKey')) apiKeyInput.value = localStorage.getItem('apiKey');
+      if (localStorage.getItem('apiModel')) apiModelInput.value = localStorage.getItem('apiModel');
+      if (localStorage.getItem('apiEndpoint')) apiEndpointInput.value = localStorage.getItem('apiEndpoint');
+      toggleApiFields(false); 
+    }
+    function toggleApiFields(resetDefaults = true) {
+      const isOnline = apiProvider.value === 'online';
+      keyContainer.style.display = isOnline ? 'block' : 'none';
+      if (resetDefaults) {
+        if (isOnline) { apiEndpointInput.value = 'https://openrouter.ai/api/v1'; apiModelInput.value = 'meta-llama/llama-3.1-8b-instruct'; } 
+        else { apiEndpointInput.value = 'http://localhost:11434'; apiModelInput.value = 'llama3.1'; }
+      }
+      saveSettings();
+    }
+
+    apiProvider.addEventListener('change', () => toggleApiFields(true));
+    ['input'].forEach(e => { apiKeyInput.addEventListener(e, saveSettings); apiModelInput.addEventListener(e, saveSettings); apiEndpointInput.addEventListener(e, saveSettings); });
+    newGameBtn.addEventListener('click', initGame);
+
+    async function callAI(messages, isJsonFormat = false) {
+      const provider = apiProvider.value, apiKey = apiKeyInput.value.trim(), model = apiModelInput.value.trim(), endpoint = apiEndpointInput.value.trim().replace(/\/$/, '');
+      if (provider === 'online' && !apiKey) throw new Error('API key required.');
+
+      if (provider === 'local') {
+        const payload = { model: model || 'llama3.1', messages, stream: false, temperature: 0.0 };
+        if (isJsonFormat) payload.format = 'json';
+        const res = await fetch(`${endpoint}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(`Ollama Error. Check CORS.`);
+        return (await res.json()).message.content;
+      } else {
+        const payload = { model: model || 'meta-llama/llama-3.1-8b-instruct', messages, stream: false, temperature: 0.0 };
+        if (isJsonFormat) payload.response_format = { type: 'json_object' };
+        const res = await fetch(`${endpoint}/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(`API Error.`);
+        return (await res.json()).choices[0].message.content;
+      }
+    }
+
+    async function initGame() {
+      uiVictim.textContent = "Generating..."; 
+      uiEvidence.innerHTML = '<div class="evidence-box"><div class="evidence-badge">SITE</div><div class="evidence-name">Loading...</div></div><div class="evidence-box"><div class="evidence-badge">WPN</div><div class="evidence-name">Loading...</div></div>';
+      uiSuspects.innerHTML = '<div class="suspect-card"><div class="card-header"><div class="avatar">...</div><div class="suspect-info"><strong>Building Case</strong><small>Please wait</small></div></div></div>';
+      chatHistoryDiv.innerHTML = `<div class="msg system">Contacting AI to build a new case file...</div>`;
+      
+      chatInput.disabled = true; sendBtn.disabled = true; accuseBtn.disabled = true;
+      currentSuspectIndex = null;
+      chiefChatHistory = []; 
+      
+      // We updated the system prompt to ask for clues for the weapon and location!
+      const systemPrompt = `You are a murder mystery game master. Invent a unique murder scenario. Output strictly valid JSON. Format exact structure: {"victim_name": "Name", "location": "Location Name", "location_clue": "A 1-sentence physical description of the crime scene revealing a subtle clue", "weapon": "Weapon Name", "weapon_clue": "A 1-sentence physical description of the weapon revealing a subtle clue", "suspects": [{"name": "Suspect 1","personality": "Traits","relationship": "Rel","is_killer": true},{"name": "Suspect 2","personality": "Traits","relationship": "Rel","is_killer": false},{"name": "Suspect 3","personality": "Traits","relationship": "Rel","is_killer": false}]}`;
+
+      try {
+        const responseContent = await callAI([{ role: 'user', content: systemPrompt }], true);
+        const cleanContent = responseContent.replace(/```json/g, '').replace(/```/g, '').trim();
+        gameState = JSON.parse(cleanContent);
+        
+        for (let i = gameState.suspects.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [gameState.suspects[i], gameState.suspects[j]] = [gameState.suspects[j], gameState.suspects[i]];
+        }
+        setupGameUI();
+      } catch (error) { chatHistoryDiv.innerHTML = `<div class="msg system" style="color:var(--accent-color)">Failed: ${error.message}</div>`; }
+    }
+
+    function setupGameUI() {
+      uiVictim.textContent = gameState.victim_name; 
+      
+      // Render the Evidence Locker
+      uiEvidence.innerHTML = `
+        <div class="evidence-box" onclick="inspectEvidence('location')">
+          <div class="evidence-badge">SITE</div>
+          <div class="evidence-name">${gameState.location}</div>
+        </div>
+        <div class="evidence-box" onclick="inspectEvidence('weapon')">
+          <div class="evidence-badge">WPN</div>
+          <div class="evidence-name">${gameState.weapon}</div>
+        </div>
+      `;
+
+      uiSuspects.innerHTML = '';
+      accuseBtn.disabled = false;
+
+      const chiefCard = document.createElement('div');
+      chiefCard.className = 'suspect-card chief-card';
+      chiefCard.id = `suspect-card-chief`;
+      chiefCard.onclick = () => selectSuspect('chief');
+      chiefCard.innerHTML = `
+        <div class="card-header">
+          <div class="avatar">★</div>
+          <div class="suspect-info">
+            <strong>Police Chief</strong>
+            <small>Master of Minds & Expert</small>
+          </div>
+        </div>
+        <div class="card-details">
+          <strong>Role</strong>
+          <p>Veteran detective. Talk to him if you need a hint or a summary of the evidence you have gathered.</p>
+        </div>
+      `;
+      uiSuspects.appendChild(chiefCard);
+
+      chatHistories = gameState.suspects.map((s) => {
+        const role = s.is_killer ? `YOU ARE THE KILLER. You murdered them using ${gameState.weapon}. Lie and act innocent, but leave subtle clues.` : `YOU ARE INNOCENT. You did not kill them. Respond naturally.`;
+        const strictPrompt = `You are playing the role of ${s.name}. Personality: ${s.personality}. Relationship to victim: ${s.relationship}. ${role} STRICT RULES: 1. Keep answers under 2 sentences. 2. NEVER change your story. 3. If asked the exact same question twice, repeat your previous answer verbatim.`;
+        return [{ role: 'system', content: strictPrompt }];
+      });
+
+      gameState.suspects.forEach((s, i) => {
+        const nameParts = s.name.split(' ');
+        const initials = nameParts.length > 1 ? (nameParts[0][0] + nameParts[1][0]).toUpperCase() : nameParts[0][0].toUpperCase();
+
+        const card = document.createElement('div'); 
+        card.className = 'suspect-card';
+        card.id = `suspect-card-${i}`;
+        card.onclick = () => selectSuspect(i);
+        
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="avatar">${initials}</div>
+            <div class="suspect-info">
+              <strong>${s.name}</strong>
+              <small>Click to interrogate</small>
+            </div>
+          </div>
+          <div class="card-details">
+            <strong>Relationship</strong>
+            <p>${s.relationship}</p>
+            <strong>Profile</strong>
+            <p>${s.personality}</p>
+          </div>
+        `;
+        uiSuspects.appendChild(card);
+      });
+
+      currentSuspectHeader.textContent = "Nobody Selected";
+      chatHistoryDiv.innerHTML = `<div class="msg system">Case files loaded. Select a card from the left to open a dossier.</div>`;
+    }
+
+    function selectSuspect(index) {
+      if (currentSuspectIndex === index) {
+        currentSuspectIndex = null;
+        document.querySelectorAll('.suspect-card').forEach(card => card.classList.remove('active'));
+        currentSuspectHeader.textContent = "Nobody Selected";
+        chatInput.disabled = true; sendBtn.disabled = true;
+        chatInput.placeholder = "Select a card to begin...";
+        chatHistoryDiv.innerHTML = `<div class="msg system">Select a suspect or the Police Chief to open their dossier.</div>`;
+        return;
+      }
+      currentSuspectIndex = index;
+      document.querySelectorAll('.suspect-card').forEach(card => {
+        card.classList.remove('active');
+        if (card.id === `suspect-card-${index}`) card.classList.add('active');
+      });
+
+      if (index === 'chief') {
+        currentSuspectHeader.textContent = `Police Chief (Master of Minds)`;
+        currentSuspectHeader.style.color = "var(--chief-color)";
+        chatInput.disabled = false; sendBtn.disabled = false; 
+        chatInput.placeholder = `Ask the Chief for a hint...`;
+      } else {
+        currentSuspectHeader.textContent = `${gameState.suspects[index].name} (${gameState.suspects[index].relationship})`;
+        currentSuspectHeader.style.color = "var(--accent-color)";
+        chatInput.disabled = false; sendBtn.disabled = false; 
+        chatInput.placeholder = `Question ${gameState.suspects[index].name}...`;
+      }
+      renderChatHistory();
+    }
+
+    function renderChatHistory() {
+      chatHistoryDiv.innerHTML = '';
+      if (currentSuspectIndex === null) return;
+      
+      let history = currentSuspectIndex === 'chief' ? chiefChatHistory : chatHistories[currentSuspectIndex].slice(1);
+
+      if (history.length === 0) { 
+        let name = currentSuspectIndex === 'chief' ? "The Police Chief" : gameState.suspects[currentSuspectIndex].name;
+        chatHistoryDiv.innerHTML = `<div class="msg system">${name} is ready for your questions.</div>`; 
+        return; 
+      }
+      
+      history.forEach((msg) => {
+        const msgDiv = document.createElement('div'); 
+        if (msg.role !== 'user' && currentSuspectIndex === 'chief') {
+          msgDiv.className = 'msg suspect chief-reply';
+        } else {
+          msgDiv.className = `msg ${msg.role === 'user' ? 'user' : 'suspect'}`;
+        }
+        msgDiv.textContent = msg.content; 
+        chatHistoryDiv.appendChild(msgDiv);
+      });
+      chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = chatInput.value.trim(); if (!text || currentSuspectIndex === null) return;
+      
+      if (currentSuspectIndex === 'chief') { chiefChatHistory.push({ role: 'user', content: text }); } 
+      else { chatHistories[currentSuspectIndex].push({ role: 'user', content: text }); }
+      
+      chatInput.value = ''; renderChatHistory();
+      chatHistoryDiv.innerHTML += `<div class="msg system" id="typing">Analyzing...</div>`; 
+      chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+      chatInput.disabled = true; sendBtn.disabled = true;
+
+      try {
+        let reply;
+        if (currentSuspectIndex === 'chief') {
+           let transcripts = "";
+           gameState.suspects.forEach((s, i) => {
+              let h = chatHistories[i].slice(1);
+              if (h.length > 0) {
+                 transcripts += `\n--- Interview with ${s.name} ---\n`;
+                 h.forEach(m => transcripts += `${m.role === 'user' ? 'Detective' : s.name}: ${m.content}\n`);
+              }
+           });
+           const trueKiller = gameState.suspects.find(s => s.is_killer).name;
+           const chiefSystem = `You are the Police Chief. The true killer is ${trueKiller}. DO NOT REVEAL THE KILLER'S IDENTITY. Transcripts: ${transcripts || "No interviews conducted yet."} Answer the detective's question, summarize findings, or point out contradictions. Keep answers under 3 sentences.`;
+           let payload = [{role: 'system', content: chiefSystem}, ...chiefChatHistory];
+           reply = await callAI(payload, false);
+           chiefChatHistory.push({ role: 'assistant', content: reply });
+        } else {
+           reply = await callAI(chatHistories[currentSuspectIndex], false);
+           chatHistories[currentSuspectIndex].push({ role: 'assistant', content: reply });
+        }
+      } catch (error) { 
+        if (currentSuspectIndex === 'chief') chiefChatHistory.push({ role: 'assistant', content: `[Error: ${error.message}]` }); 
+        else chatHistories[currentSuspectIndex].push({ role: 'assistant', content: `[Error: ${error.message}]` }); 
+      } finally {
+        document.getElementById('typing')?.remove();
+        chatInput.disabled = false; sendBtn.disabled = false; chatInput.focus(); renderChatHistory();
+      }
+    }
+
+    // --- Evidence Inspection Logic ---
+    window.inspectEvidence = function(type) {
+      modalOverlay.style.display = 'flex';
+      if (type === 'location') {
+        modalContent.innerHTML = `
+          <h2><span style="font-size: 1rem; color: var(--text-muted);">CRIME SCENE</span><br>${gameState.location}</h2>
+          <p style="font-family: var(--font-mono); color: var(--accent-color); font-style: italic;">"${gameState.location_clue}"</p>
+          <button class="modal-btn" onclick="closeModal()">Close File</button>
+        `;
+      } else if (type === 'weapon') {
+        modalContent.innerHTML = `
+          <h2><span style="font-size: 1rem; color: var(--text-muted);">MURDER WEAPON</span><br>${gameState.weapon}</h2>
+          <p style="font-family: var(--font-mono); color: var(--accent-color); font-style: italic;">"${gameState.weapon_clue}"</p>
+          <button class="modal-btn" onclick="closeModal()">Close File</button>
+        `;
+      }
+    };
+
+    // --- Accusation Logic ---
+    accuseBtn.addEventListener('click', () => {
+      modalOverlay.style.display = 'flex';
+      let buttonsHtml = '';
+      gameState.suspects.forEach((s, index) => { buttonsHtml += `<button class="modal-btn" onclick="submitVerdict(${index})">${s.name}</button>`; });
+      modalContent.innerHTML = `
+        <h2>Make Your Accusation</h2>
+        <p>The evidence is gathered. Who is responsible for the murder of ${gameState.victim_name}?</p>
+        <div class="modal-suspect-list">${buttonsHtml}</div>
+        <button class="cancel-btn" onclick="closeModal()">Wait, I need more time.</button>
+      `;
+    });
+
+    function closeModal() { modalOverlay.style.display = 'none'; }
+    window.submitVerdict = function(index) {
+      const suspect = gameState.suspects[index];
+      const isCorrect = suspect.is_killer;
+      let resultHtml = isCorrect 
+        ? `<div class="result-text result-win">CASE CLOSED</div><p>Excellent work, Detective. You successfully proved that <strong>${suspect.name}</strong> was lying.</p>`
+        : `<div class="result-text result-loss">COLD CASE</div><p>You accused the wrong person. While you wasted time on <strong>${suspect.name}</strong>, the real killer slipped away.</p>`;
+      modalContent.innerHTML = `<h2>Verdict</h2>${resultHtml}<button class="modal-btn" style="margin-top: 20px; width: 100%;" onclick="startNewGameFromModal()">Start New Investigation</button>`;
+    };
+    window.startNewGameFromModal = function() { closeModal(); initGame(); };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings(); initGame();
+      sendBtn.addEventListener('click', sendMessage);
+      chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    });
+  </script>
+</body>
+</html>
