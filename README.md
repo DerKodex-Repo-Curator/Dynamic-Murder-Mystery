@@ -4,7 +4,7 @@ A completely serverless, browser-based murder mystery game powered by Large Lang
 
 As the detective, your job is to interrogate the suspects, inspect the evidence, consult with the Police Chief, and catch the killer in a lie.
 
-!(Screenshot 2026-08-09 183312.png)
+![Demo](images/demo.png)
 ---
 
 ## ✨ Features
