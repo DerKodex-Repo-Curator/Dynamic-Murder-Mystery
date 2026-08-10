@@ -6,7 +6,7 @@ As the detective, your job is to interrogate the suspects, inspect the evidence,
 
 ![Demo](images/demo.png)
 
-[https://amaravindmenon.github.io/Dynamic-Murder-Mystry/](https://amaravindmenon.github.io/Dynamic-Murder-Mystery/)
+[https://amaravindmenon.github.io/Dynamic-Murder-Mystery/](https://amaravindmenon.github.io/Dynamic-Murder-Mystery/)
 
 Select online add the Api-Key, endpoint and model and play directly
 
